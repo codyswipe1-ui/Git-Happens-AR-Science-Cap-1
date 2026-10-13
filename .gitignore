@@ -6,3 +6,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Python testing
+.pytest_cache/
+__pycache__/
