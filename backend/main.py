@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from routes.lessons import router as lessons_router
+from routes.quizzes import router as quizzes_router
 
 # Initialize the ImmerseED API
 # Creating instance of FastAPI class and storing it in a var called app
@@ -11,6 +12,7 @@ app = FastAPI(
 
 # Connecting the lessons routes to app
 app.include_router(lessons_router)
+app.include_router(quizzes_router)
 
 # Decorator saying execute function below when HTTP request is pulled
 @app.get("/")
