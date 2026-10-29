@@ -37,6 +37,7 @@ export default function AppTabs() {
           ),
         }}
       />
+      <Tabs.Screen name="model" options={{ href: null }} />
       {/* Keep the library accessible from Models without a separate tab. */}
       <Tabs.Screen
         name="library"

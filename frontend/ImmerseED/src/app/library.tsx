@@ -1,7 +1,7 @@
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -61,8 +61,7 @@ export default function ModelLibraryScreen() {
 
   const openModel = (model: CellModel) => {
     if (model.locked) return;
-    // TODO: open the Model Details screen (next step), e.g. router.push(`/library/${model.id}`)
-    Alert.alert(model.name, 'The Model Details screen comes next.');
+    router.push({ pathname: '/model', params: { id: String(model.id) } });
   };
 
   return (
@@ -119,7 +118,7 @@ function ModelCard({ model, onPress }: { model: CellModel; onPress: () => void }
       accessibilityLabel={
         model.locked
           ? `${model.name}, locked`
-          : `${model.name}, ${model.level}, ${model.partsCount} parts`
+          : `${model.name}, ${model.level}, 3D and AR views`
       }
       style={({ pressed }) => [styles.card, model.locked && styles.cardLocked, pressed && styles.pressed]}>
       <View style={[styles.preview, { backgroundColor: model.locked ? '#1b1a52' : color + '33' }]}>
@@ -141,7 +140,7 @@ function ModelCard({ model, onPress }: { model: CellModel; onPress: () => void }
         ) : (
           <View style={styles.metaRow}>
             <Text style={[styles.badge, { color, borderColor: color }]}>{model.level}</Text>
-            <Text style={styles.cardMeta}>{model.partsCount} parts</Text>
+            <Text style={styles.cardMeta}>3D + AR</Text>
           </View>
         )}
       </View>

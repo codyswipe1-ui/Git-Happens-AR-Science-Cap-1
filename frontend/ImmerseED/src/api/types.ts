@@ -10,7 +10,7 @@ export type CellModel = {
   description: string;
   partsCount: number;
   sceneId?: string;  // ReactVision Studio scene (phone AR)
-  modelUrl?: string; // .glb file (web 3D), added later
+  modelUrl?: 'animal' | 'plant' | 'human'; // Local GLB key in public/models
   quizId?: string;   // matches a quiz on the back end, e.g. 'animal-cell'
   locked?: boolean;
 };
