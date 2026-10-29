@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Link, Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
 // One tab bar for phone AND web.
@@ -29,11 +29,27 @@ export default function AppTabs() {
         }}
       />
       <Tabs.Screen
-        name="library"
+        name="dashboard"
         options={{
-          title: 'Library',
+          title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
             <SymbolView name={{ ios: 'square.grid.2x2', android: 'grid_view', web: 'grid_view' }} tintColor={color} size={size} />
+          ),
+        }}
+      />
+      {/* Keep the library accessible from Models without a separate tab. */}
+      <Tabs.Screen
+        name="library"
+        options={{
+          href: null,
+          title: 'Models',
+          headerShown: true,
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTintColor: '#ffffff',
+          headerLeft: () => (
+            <Link href="/dashboard" style={{ color: COLORS.inactive, padding: 16 }}>
+              ← Dashboard
+            </Link>
           ),
         }}
       />
