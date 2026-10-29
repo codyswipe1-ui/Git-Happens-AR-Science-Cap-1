@@ -1,16 +1,6 @@
-import { StyleSheet, View } from 'react-native';
-import { StudioSceneNavigator } from '@reactvision/react-viro';
+import ARView from '@/components/ar-view';
 
-export default function ARScreen() {
-  return (
-    <View style={styles.container}>
-      <StudioSceneNavigator
-        autofocus
-        sceneId="877e0989-706e-49be-99c7-e17073f20c18"
-        style={styles.container}
-      />
-    </View>
-  );
+// Expo picks ar-view.tsx on phones and ar-view.web.tsx in the browser.
+export default function ExploreScreen() {
+  return <ARView />;
 }
-
-const styles = StyleSheet.create({ container: { flex: 1 } });
