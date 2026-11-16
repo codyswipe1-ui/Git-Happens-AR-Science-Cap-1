@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -13,194 +14,155 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getCellModels } from '@/api';
 import { CellModel } from '@/api/types';
+import ModelCard from '@/components/model-card';
+import { colors, fonts, maxContentWidth, radius, size, space } from '@/constants/design';
 
-// Colors match the login screen (index.tsx) so the app feels like one product.
-const COLORS = {
-  background: '#0b0a3d',
-  card: '#15134f',
-  cardBorder: '#26236e',
-  text: '#ffffff',
-  textSecondary: '#749bdb',
-  accent: '#579fbb',
-};
-
-// One color per kind of cell, like the Model Library mockup in the design doc.
-const TYPE_COLORS: Record<CellModel['modelType'], string> = {
-  animal: '#3b82f6',
-  plant: '#10b981',
-  bacteria: '#d97706',
-  specialized: '#8b5cf6',
-};
-
-type Filter = 'all' | CellModel['modelType'];
-
-const FILTERS: { value: Filter; label: string }[] = [
-  { value: 'all', label: 'All Models' },
-  { value: 'animal', label: 'Animal' },
-  { value: 'plant', label: 'Plant' },
-  { value: 'bacteria', label: 'Bacteria' },
-  { value: 'specialized', label: 'Specialized' },
-];
+// 1 column on phones, 2 on tablets and small laptops, 3 on wide screens.
+function columnsFor(width: number) {
+  if (width >= 1050) return 3;
+  if (width >= 700) return 2;
+  return 1;
+}
 
 export default function ModelLibraryScreen() {
   const [models, setModels] = useState<CellModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
   const { width } = useWindowDimensions();
-  const columns = width >= 600 ? 2 : 1; // 2 columns on tablets, 1 on phones
+  const columns = columnsFor(width);
+  // Exact card width, so every card in the grid is the same size.
+  const contentWidth = Math.min(width, maxContentWidth) - space.lg * 2;
+  const cardWidth = (contentWidth - space.sm * (columns - 1)) / columns;
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(null);
     getCellModels()
       .then(setModels)
-      .catch((e) => setError(String(e)))
+      .catch(() => setError('We couldn’t load the models. Check your connection and try again.'))
       .finally(() => setLoading(false));
-  }, []);
+  };
 
-  const shown = filter === 'all' ? models : models.filter((m) => m.modelType === filter);
+  useEffect(load, []);
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return models.filter(
+      (m) => !q || m.name.toLowerCase().includes(q),
+    );
+  }, [models, query]);
+
+  // In a grid, fill the last row with empty spacers so a lone card keeps its column width.
+  const cells: (CellModel | null)[] = [...shown];
+  while (columns > 1 && cells.length % columns !== 0) cells.push(null);
 
   const openModel = (model: CellModel) => {
-    if (model.locked) return;
     router.push({ pathname: '/model', params: { id: String(model.id) } });
   };
 
-  return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+  const header = (
+    <View style={styles.header}>
       <Text style={styles.title} accessibilityRole="header">
         Model Library
       </Text>
+      <Text style={styles.subtitle}>Explore any cell, any time. Nothing is locked.</Text>
 
-      <View style={styles.filters}>
-        {FILTERS.map((f) => {
-          const selected = f.value === filter;
-          return (
-            <Pressable
-              key={f.value}
-              onPress={() => setFilter(f.value)}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              style={[styles.chip, selected && styles.chipSelected]}>
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{f.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search models"
+        placeholderTextColor={colors.textMuted}
+        accessibilityLabel="Search models"
+        autoCorrect={false}
+        style={styles.search}
+      />
 
-      {loading ? (
-        <ActivityIndicator color={COLORS.accent} style={styles.center} />
-      ) : error ? (
-        <Text style={[styles.message, styles.center]}>Couldn't load the cells. {error}</Text>
-      ) : (
-        <FlatList
-          key={columns} // FlatList needs a new key when the column count changes
-          data={shown}
-          numColumns={columns}
-          keyExtractor={(m) => String(m.id)}
-          contentContainerStyle={styles.list}
-          columnWrapperStyle={columns > 1 ? styles.row : undefined}
-          ListEmptyComponent={<Text style={styles.message}>No cells in this group yet.</Text>}
-          renderItem={({ item }) => (
-            <ModelCard model={item} onPress={() => openModel(item)} />
-          )}
-        />
-      )}
+    </View>
+  );
+
+  const empty = loading ? (
+    <ActivityIndicator size="large" color={colors.ink} style={{ marginTop: space.xxl }} />
+  ) : error ? (
+    <View style={styles.message}>
+      <Text style={styles.messageTitle}>Something went wrong</Text>
+      <Text style={styles.messageBody}>{error}</Text>
+      <Pressable onPress={load} accessibilityRole="button" style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
+        <Text style={styles.retryText}>Try again</Text>
+      </Pressable>
+    </View>
+  ) : (
+    <View style={styles.message}>
+      <Text style={styles.messageTitle}>{query ? 'No models match your search' : 'No models here yet'}</Text>
+      <Text style={styles.messageBody}>
+        {query ? 'Try a different name.' : 'New cells show up when they’re added to the library.'}
+      </Text>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <FlatList
+        key={columns} // FlatList must remount when the column count changes
+        data={shown.length ? cells : []}
+        numColumns={columns}
+        keyExtractor={(m, i) => (m ? String(m.id) : `spacer-${i}`)}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        columnWrapperStyle={columns > 1 ? { gap: space.sm } : undefined}
+        ItemSeparatorComponent={() => <View style={{ height: space.sm }} />}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) =>
+          item ? (
+            <ModelCard model={item} width={cardWidth} onPress={() => openModel(item)} />
+          ) : (
+            <View style={{ width: cardWidth }} />
+          )
+        }
+      />
     </SafeAreaView>
   );
 }
 
-function ModelCard({ model, onPress }: { model: CellModel; onPress: () => void }) {
-  const color = TYPE_COLORS[model.modelType];
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={model.locked}
-      accessibilityRole="button"
-      accessibilityLabel={
-        model.locked
-          ? `${model.name}, locked`
-          : `${model.name}, ${model.level}, 3D and AR views`
-      }
-      style={({ pressed }) => [styles.card, model.locked && styles.cardLocked, pressed && styles.pressed]}>
-      <View style={[styles.preview, { backgroundColor: model.locked ? '#1b1a52' : color + '33' }]}>
-        {model.locked ? (
-          <Text style={styles.lockText}>Locked</Text>
-        ) : (
-          // Simple cell drawing until real thumbnails exist
-          <View style={[styles.cell, { borderColor: color }]}>
-            <View style={[styles.nucleus, { backgroundColor: color }]} />
-          </View>
-        )}
-      </View>
-      <View style={styles.cardBody}>
-        <Text style={[styles.cardTitle, { color: model.locked ? COLORS.textSecondary : color }]}>
-          {model.name}
-        </Text>
-        {model.locked ? (
-          <Text style={styles.cardMeta}>Finish the Animal Cell to unlock</Text>
-        ) : (
-          <View style={styles.metaRow}>
-            <Text style={[styles.badge, { color, borderColor: color }]}>{model.level}</Text>
-            <Text style={styles.cardMeta}>3D + AR</Text>
-          </View>
-        )}
-      </View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.background, paddingHorizontal: 20 },
-  title: { color: COLORS.text, fontSize: 30, fontWeight: 'bold', marginTop: 12, marginBottom: 16 },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
-    minHeight: 44, // big enough to tap easily
-    justifyContent: 'center',
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: {
+    width: '100%',
+    maxWidth: maxContentWidth,
+    alignSelf: 'center',
+    paddingHorizontal: space.lg,
+    paddingBottom: space.xxl,
   },
-  chipSelected: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  chipText: { color: COLORS.textSecondary, fontWeight: '600' },
-  chipTextSelected: { color: COLORS.background },
-  list: { paddingBottom: 120, gap: 16 },
-  row: { gap: 16 },
-  card: {
-    flex: 1,
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.cardBorder,
-    overflow: 'hidden',
+  header: { paddingTop: space.lg, paddingBottom: space.md, gap: space.md },
+  title: { fontFamily: fonts.display, fontSize: 32, letterSpacing: -0.6, color: colors.ink },
+  subtitle: { fontFamily: fonts.body, fontSize: 15, color: colors.textMuted, marginTop: -space.sm },
+  search: {
+    height: size.input,
+    borderRadius: radius.button,
+    backgroundColor: colors.surface,
+    paddingHorizontal: space.md,
+    fontFamily: fonts.body,
+    fontSize: 16,
+    color: colors.ink,
   },
-  cardLocked: { opacity: 0.6 },
-  pressed: { opacity: 0.8 },
-  preview: { height: 140, alignItems: 'center', justifyContent: 'center' },
-  cell: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderStyle: 'dashed',
+  pressed: { opacity: 0.85 },
+  message: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.row,
+    padding: space.xl,
     alignItems: 'center',
+    gap: 6,
+  },
+  messageTitle: { fontFamily: fonts.heading, fontSize: 20, color: colors.ink, textAlign: 'center' },
+  messageBody: { fontFamily: fonts.body, fontSize: 15, color: colors.textMuted, textAlign: 'center' },
+  retry: {
+    marginTop: space.sm,
+    minHeight: size.touch,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.button,
+    backgroundColor: colors.ink,
     justifyContent: 'center',
   },
-  nucleus: { width: 28, height: 28, borderRadius: 14 },
-  lockText: { color: COLORS.textSecondary, fontWeight: 'bold', fontSize: 16 },
-  cardBody: { padding: 14, gap: 8 },
-  cardTitle: { fontSize: 18, fontWeight: 'bold' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  badge: {
-    fontSize: 12,
-    fontWeight: '600',
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    overflow: 'hidden',
-  },
-  cardMeta: { color: COLORS.textSecondary, fontSize: 13 },
-  message: { color: COLORS.textSecondary, textAlign: 'center', marginTop: 24 },
-  center: { marginTop: 40 },
+  retryText: { fontFamily: fonts.bodySemibold, fontSize: 16, color: colors.surface },
 });

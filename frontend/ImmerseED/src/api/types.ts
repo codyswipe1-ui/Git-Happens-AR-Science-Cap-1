@@ -15,6 +15,16 @@ export type CellModel = {
   locked?: boolean;
 };
 
+// A lesson and the student's progress in it. Lessons unlock in order.
+export type Lesson = {
+  id: number;
+  title: string;
+  modelId: number; // the CellModel this lesson explores
+  partsDone: number;
+  partsTotal: number;
+  status: 'done' | 'current' | 'locked';
+};
+
 // ---- Quizzes: shapes returned by backend/routes/quizzes.py ----
 
 export type QuizQuestion = {

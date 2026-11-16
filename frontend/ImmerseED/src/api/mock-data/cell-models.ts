@@ -32,4 +32,13 @@ export const CELL_MODELS: CellModel[] = [
     partsCount: 0,
     modelUrl: 'human',
   },
+  {
+    id: 4,
+    name: 'Aminat Cell',
+    modelType: 'animal',
+    level: 'Advanced',
+    description: 'Explore Aminat cell and get creepy.',
+    partsCount: 0,
+    modelUrl: 'human',
+  },
 ];

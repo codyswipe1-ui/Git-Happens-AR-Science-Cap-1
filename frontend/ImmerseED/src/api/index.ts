@@ -1,7 +1,8 @@
 // Every call the app makes to the back end lives in this file.
 // Screens import from here and never call fetch() themselves.
-import { CellModel, Quiz, QuizAnswers, QuizSubmission } from '@/api/types';
+import { CellModel, Lesson, Quiz, QuizAnswers, QuizSubmission } from '@/api/types';
 import { CELL_MODELS } from '@/api/mock-data/cell-models';
+import { LESSONS } from '@/api/mock-data/lessons';
 
 // Set EXPO_PUBLIC_API_URL in .env.local.
 // On a phone, use your Mac's network address (e.g. http://10.3.250.7:8000), not localhost.
@@ -27,6 +28,12 @@ export async function getCellModels(): Promise<CellModel[]> {
 
 export async function getCellModel(id: number): Promise<CellModel | undefined> {
   return CELL_MODELS.find((m) => m.id === id); // TODO: return request<CellModel>(`/models/${id}`);
+}
+
+// ---- Lessons: sample data until the back end has /lessons ----
+
+export async function getLessons(): Promise<Lesson[]> {
+  return LESSONS; // TODO: return request<Lesson[]>('/lessons');
 }
 
 // ---- Quizzes: real back end (backend/routes/quizzes.py) ----
