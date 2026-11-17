@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lesson cell viewer</title>
+<style>
+  html, body { height: 100%; margin: 0; background: transparent; font-family: system-ui, sans-serif; color: #5B5D6B; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; font-size: 15px; pointer-events: none; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="status" role="status">Loading the cell…</div>
+<script type="module">
+// Shows one cell model and "pulls apart" the parts a lesson step is about.
+// The app tells it which parts with postMessage({ type: 'focus', meshes: [...], split: true }).
+// Part names are matched by how they start, e.g. 'Golgi' matches 'Golgi_Golgi_0'.
+const status = document.getElementById('status');
+const params = new URLSearchParams(location.search);
+const modelName = params.get('model') || 'human';
+
+// The latest request from the app. Kept even if it arrives before the model loads.
+let focus = (params.get('focus') || '').split(',').filter(Boolean);
+let split = params.get('split') !== '0';
+
+try {
+  const THREE = await import('three');
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  document.body.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xe6e7ee, 3));
+  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  sun.position.set(3, 5, 4);
+  scene.add(sun);
+
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 1000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.enablePan = false;
+
+  function resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const gltf = await new GLTFLoader().loadAsync(`./models/${modelName}.glb`);
+  const root = gltf.scene;
+  scene.add(root);
+
+  // Center the model at (0, 0, 0) and measure how big it is.
+  const box = new THREE.Box3().setFromObject(root);
+  const center = box.getCenter(new THREE.Vector3());
+  root.position.sub(center);
+  root.updateMatrixWorld(true);
+  const radius = box.getSize(new THREE.Vector3()).length() / 2;
+
+  // Put the camera far enough back to see the whole cell, with room for a part pulled out.
+  camera.position.set(0, radius * 0.6, radius * 3.4);
+  camera.near = radius / 100;
+  camera.far = radius * 20;
+  camera.updateProjectionMatrix();
+  controls.minDistance = radius * 1.2;
+  controls.maxDistance = radius * 6;
+
+  // Every piece of the cell, with its own material (so fading one doesn't fade others)
+  // and the spot it started in.
+  const parts = [];
+  root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.material = obj.material.clone();
+    obj.material.transparent = true;
+    parts.push({ mesh: obj, home: obj.position.clone(), target: obj.position.clone(), opacity: 1, targetOpacity: 1 });
+  });
+
+  const matches = (mesh) => focus.some((name) => mesh.name.startsWith(name));
+
+  // Work out where every piece should go for the current focus.
+  function apply() {
+    const chosen = parts.filter((p) => matches(p.mesh));
+    const anyFocus = chosen.length > 0;
+
+    // Which way to pull: up and toward the viewer, leaning left or right to match
+    // where the part sits, so it comes out of the cell instead of hiding behind it.
+    const partBox = new THREE.Box3();
+    chosen.forEach((p) => partBox.expandByObject(p.mesh));
+    const side = anyFocus ? partBox.getCenter(new THREE.Vector3()).x / radius : 0;
+    const dir = new THREE.Vector3(side * 0.8, 0.75, 1).normalize();
+    dir.multiplyScalar(split ? radius * 1.15 : 0);
+
+    for (const p of parts) {
+      const isChosen = chosen.includes(p);
+      p.target.copy(p.home);
+      if (isChosen && split) {
+        // Turn the world-space push into the piece's own coordinates.
+        const parent = p.mesh.parent;
+        const from = parent.localToWorld(p.home.clone());
+        const to = parent.worldToLocal(from.add(dir));
+        p.target.copy(to);
+      }
+      p.targetOpacity = !anyFocus || isChosen ? 1 : 0.12;
+    }
+  }
+
+  window.addEventListener('message', (e) => {
+    if (e.data?.type !== 'focus') return;
+    focus = e.data.meshes || [];
+    split = e.data.split !== false;
+    apply();
+  });
+
+  apply();
+  status.style.display = 'none';
+  window.cellDebug = { parts, radius }; // handy for testing in the browser console
+
+  // Each frame, slide pieces a little closer to where they should be.
+  renderer.setAnimationLoop(() => {
+    for (const p of parts) {
+      p.mesh.position.lerp(p.target, 0.12);
+      p.opacity += (p.targetOpacity - p.opacity) * 0.12;
+      p.mesh.material.opacity = p.opacity;
+      p.mesh.material.depthWrite = p.opacity > 0.5;
+    }
+    controls.update();
+    renderer.render(scene, camera);
+  });
+} catch (err) {
+  console.error(err);
+  status.style.display = 'flex';
+  status.textContent = 'Couldn’t load the 3D cell. Check your internet connection and reload.';
+}
+</script>
+</body>
+</html>

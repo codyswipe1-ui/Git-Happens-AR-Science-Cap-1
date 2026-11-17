@@ -21,6 +21,10 @@ function openModel(id: number) {
   router.push({ pathname: '/model', params: { id: String(id) } });
 }
 
+function openLesson(id: number) {
+  router.push({ pathname: '/lesson', params: { id: String(id) } });
+}
+
 export default function DashboardScreen() {
   const [models, setModels] = useState<CellModel[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -91,7 +95,7 @@ export default function DashboardScreen() {
                   <LessonRow
                     key={l.id}
                     lesson={l}
-                    onPress={l.status === 'locked' ? undefined : () => openModel(l.modelId)}
+                    onPress={l.status === 'locked' ? undefined : () => openLesson(l.id)}
                   />
                 ))}
               </View>
@@ -120,7 +124,7 @@ function ContinueCard({ lesson, model }: { lesson: Lesson; model: CellModel }) {
           {lesson.partsDone} of {lesson.partsTotal} parts
         </Text>
         <Pressable
-          onPress={() => openModel(model.id)}
+          onPress={() => openLesson(lesson.id)}
           accessibilityRole="button"
           accessibilityLabel={`Continue lesson ${lesson.id}, ${lesson.title}`}
           style={({ pressed }) => [styles.button, pressed && styles.pressed]}>

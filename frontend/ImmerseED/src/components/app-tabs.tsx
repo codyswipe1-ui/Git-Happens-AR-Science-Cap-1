@@ -50,6 +50,8 @@ export default function AppTabs() {
         }}
       />
       <Tabs.Screen name="model" options={{ href: null }} />
+      {/* Lessons open full screen, with no tab bar. */}
+      <Tabs.Screen name="lesson" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen
         name="library"
         options={{

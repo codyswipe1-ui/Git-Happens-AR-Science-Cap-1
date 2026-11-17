@@ -36,6 +36,10 @@ export async function getLessons(): Promise<Lesson[]> {
   return LESSONS; // TODO: return request<Lesson[]>('/lessons');
 }
 
+export async function getLesson(id: number): Promise<Lesson | undefined> {
+  return LESSONS.find((l) => l.id === id); // TODO: return request<Lesson>(`/lessons/${id}`);
+}
+
 // ---- Quizzes: real back end (backend/routes/quizzes.py) ----
 
 export function getQuiz(quizId: string): Promise<Quiz> {

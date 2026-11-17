@@ -15,6 +15,14 @@ export type CellModel = {
   locked?: boolean;
 };
 
+// One step of a lesson: one cell part, explained.
+export type LessonStep = {
+  part: string;     // name shown on the model, e.g. 'Nucleus'
+  title: string;    // short, friendly heading, e.g. 'The control center'
+  body: string;     // the explanation
+  meshes: string[]; // the pieces of the 3D model this step is about (for highlighting later)
+};
+
 // A lesson and the student's progress in it. Lessons unlock in order.
 export type Lesson = {
   id: number;
@@ -23,6 +31,7 @@ export type Lesson = {
   partsDone: number;
   partsTotal: number;
   status: 'done' | 'current' | 'locked';
+  steps?: LessonStep[]; // the lesson content (only some lessons have it so far)
 };
 
 // ---- Quizzes: shapes returned by backend/routes/quizzes.py ----
