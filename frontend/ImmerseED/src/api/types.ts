@@ -15,6 +15,13 @@ export type CellModel = {
   locked?: boolean;
 };
 
+// One part of a cell model that students can tap and read about.
+export type CellPart = {
+  name: string;     // e.g. 'Nucleus'
+  summary: string;  // one or two short sentences
+  meshes: string[]; // how the piece names start inside the model's .glb file
+};
+
 // One step of a lesson: one cell part, explained.
 export type LessonStep = {
   part: string;     // name shown on the model, e.g. 'Nucleus'

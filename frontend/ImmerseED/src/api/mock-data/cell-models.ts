@@ -29,7 +29,7 @@ export const CELL_MODELS: CellModel[] = [
     modelType: 'animal',
     level: 'Intermediate',
     description: 'Explore a human cell and its main components.',
-    partsCount: 0,
+    partsCount: 8,
     modelUrl: 'human',
   },
   {

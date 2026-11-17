@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getCellModel, getLesson } from '@/api';
 import { CellModel, Lesson } from '@/api/types';
-import LessonStage from '@/components/lesson-stage';
+import CellViewer from '@/components/cell-viewer';
 import { colors, fonts, radius, size, space } from '@/constants/design';
 
 // Leave the lesson: go back if we can, otherwise go Home.
@@ -23,7 +23,6 @@ export default function LessonScreen() {
   const [model, setModel] = useState<CellModel | undefined>();
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(0); // which part we're on, counting from 0
-  const [split, setSplit] = useState(true); // is the part pulled out of the cell?
 
   useEffect(() => {
     setLoading(true);
@@ -95,16 +94,11 @@ export default function LessonScreen() {
           </View>
         </View>
 
-        {/* The 3D cell, with this step's part pulled out */}
+        {/* The 3D cell, with this step's part circled */}
         <View style={styles.stage}>
-          {model?.modelUrl ? <LessonStage model={model.modelUrl} meshes={current.meshes} split={split} /> : null}
-          <Text style={styles.partTag}>{current.part}</Text>
-          <Pressable
-            onPress={() => setSplit(!split)}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.splitButton, pressed && styles.pressed]}>
-            <Text style={styles.splitText}>{split ? 'Put it back' : 'Pull it out'}</Text>
-          </Pressable>
+          {model?.modelUrl ? (
+            <CellViewer model={model.modelUrl} meshes={current.meshes} label={current.part} hint={false} />
+          ) : null}
         </View>
 
         {/* The explanation for this part */}
@@ -172,30 +166,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.card,
     backgroundColor: colors.surface,
     overflow: 'hidden',
-  },
-  splitButton: {
-    position: 'absolute',
-    left: 14,
-    bottom: 14,
-    minHeight: size.touch,
-    paddingHorizontal: 14,
-    borderRadius: radius.chip,
-    backgroundColor: colors.ink,
-    justifyContent: 'center',
-  },
-  splitText: { fontFamily: fonts.bodySemibold, fontSize: 14, color: colors.surface },
-  partTag: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    backgroundColor: colors.butter,
-    borderRadius: radius.chip,
-    overflow: 'hidden',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontFamily: fonts.bodySemibold,
-    fontSize: 13,
-    color: colors.ink,
   },
 
   card: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.card },
