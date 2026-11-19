@@ -1,16 +1,32 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-from routes.lessons import router as lessons_router
-from routes.quizzes import router as quizzes_router
 from fastapi.middleware.cors import CORSMiddleware
 
+from database import Base, engine
+from models.lesson import Lesson
+from models.user import User
+from routes.lessons import router as lessons_router
+from routes.quizzes import router as quizzes_router
+from routes.auth import router as auth_router
+
+
+# Create any missing database tables when the API starts
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
 # Initialize the ImmerseED API
-# Creating instance of FastAPI class and storing it in a var called app
 app = FastAPI(
     title="ImmerseED API",
     description="Backend API for the ImmerseED AR Science application",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
+# Let the web app (Expo on port 8081) call the API from the browser
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8081"],
@@ -18,18 +34,19 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-# Connecting the lessons routes to app
+# Connect the routes
 app.include_router(lessons_router)
 app.include_router(quizzes_router)
+app.include_router(auth_router)
 
-# Decorator saying execute function below when HTTP request is pulled
+
 @app.get("/")
 def home():
     return {
         "message": "Welcome to ImmerseED!"
     }
 
-# Decorator for when someone visits /health to ensure program is responding
+
 @app.get("/health")
 def health_check():
     return {
