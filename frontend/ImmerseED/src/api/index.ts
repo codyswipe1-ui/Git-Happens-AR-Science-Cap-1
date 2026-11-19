@@ -1,8 +1,8 @@
 // Every call the app makes to the back end lives in this file.
 // Screens import from here and never call fetch() themselves.
-import { CellModel, CellPart, Lesson, Quiz, QuizAnswers, QuizSubmission } from '@/api/types';
+import { CellModel, CellPart, Lesson, Quiz, Section, QuizAnswers, QuizSubmission } from '@/api/types';
 import { CELL_MODELS } from '@/api/mock-data/cell-models';
-import { LESSONS } from '@/api/mock-data/lessons';
+import { CURRENT_SECTION, LESSONS } from '@/api/mock-data/lessons';
 import { CELL_PARTS } from '@/api/mock-data/cell-parts';
 
 // Set EXPO_PUBLIC_API_URL in .env.local.
@@ -37,6 +37,11 @@ export async function getCellParts(model: CellModel): Promise<CellPart[]> {
 }
 
 // ---- Lessons: sample data until the back end has /lessons ----
+
+// The section the student is working in. TODO: return request<Section>('/sections/current');
+export async function getCurrentSection(): Promise<Section> {
+  return CURRENT_SECTION;
+}
 
 export async function getLessons(): Promise<Lesson[]> {
   return LESSONS; // TODO: return request<Lesson[]>('/lessons');

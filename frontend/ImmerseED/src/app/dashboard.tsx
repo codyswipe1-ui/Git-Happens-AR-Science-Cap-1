@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getCellModels, getLessons } from '@/api';
-import { CellModel, Lesson } from '@/api/types';
+import { getCellModels, getCurrentSection, getLessons } from '@/api';
+import { CellModel, Lesson, Section } from '@/api/types';
 import CellArt from '@/components/cell-art';
 import LessonRow from '@/components/lesson-row';
 import ModelCard, { kindOf } from '@/components/model-card';
@@ -28,6 +28,7 @@ function openLesson(id: number) {
 export default function DashboardScreen() {
   const [models, setModels] = useState<CellModel[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [section, setSection] = useState<Section | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,10 +36,11 @@ export default function DashboardScreen() {
     setLoading(true);
     setError(null);
     // Ask for both at the same time and wait until both arrive.
-    Promise.all([getCellModels(), getLessons()])
-      .then(([m, l]) => {
+    Promise.all([getCellModels(), getLessons(), getCurrentSection()])
+      .then(([m, l, s]) => {
         setModels(m);
         setLessons(l);
+        setSection(s);
       })
       .catch(() => setError('We couldn’t load your progress. Check your connection and try again.'))
       .finally(() => setLoading(false));
@@ -90,12 +92,17 @@ export default function DashboardScreen() {
 
             <View style={styles.section}>
               <SectionHeader title="Lessons" />
+              {section ? (
+                <Text style={styles.note}>
+                  Section {section.id} · {section.title}
+                </Text>
+              ) : null}
               <View style={styles.list}>
                 {lessons.map((l) => (
                   <LessonRow
                     key={l.id}
                     lesson={l}
-                    onPress={l.status === 'locked' ? undefined : () => openLesson(l.id)}
+                    onPress={() => openLesson(l.id)}
                   />
                 ))}
               </View>

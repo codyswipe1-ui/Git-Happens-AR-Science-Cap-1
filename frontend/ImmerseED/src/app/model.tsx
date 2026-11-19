@@ -36,7 +36,7 @@ export default function ModelScreen() {
         setModel(m);
         setParts(m ? await getCellParts(m) : []);
         // A lesson that uses this cell, for the "guided tour" link. Prefer the one in progress.
-        const forThis = lessons.filter((l) => l.modelId === m?.id && l.status !== 'locked');
+        const forThis = lessons.filter((l) => l.modelId === m?.id);
         setLesson(forThis.find((l) => l.status === 'current') ?? forThis[0]);
       })
       .finally(() => setLoading(false));

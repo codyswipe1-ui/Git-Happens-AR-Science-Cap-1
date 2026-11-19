@@ -1,4 +1,4 @@
-// One lesson in a list. Three looks: done (mint), current (white with progress), locked (grey).
+// One lesson in a list. Three looks: done (mint), current (white with progress), not started (white, "Start").
 import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -11,20 +11,24 @@ type Props = { lesson: Lesson; onPress?: () => void };
 export default function LessonRow({ lesson, onPress }: Props) {
   const pct = Math.round((lesson.partsDone / lesson.partsTotal) * 100);
 
-  if (lesson.status === 'locked') {
+  if (lesson.status === 'todo') {
     return (
-      <View
-        style={[styles.row, styles.locked]}
-        accessible
-        accessibilityLabel={`Lesson ${lesson.id}, ${lesson.title}, locked`}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`Lesson ${lesson.id}, ${lesson.title}, not started`}
+        style={({ pressed }) => [styles.row, styles.todo, pressed && styles.pressed]}>
         <View style={[styles.circle, { backgroundColor: colors.background }]}>
-          <SymbolView name={{ ios: 'lock.fill', android: 'lock', web: 'lock' }} tintColor={colors.textMuted} size={17} />
+          <Text style={styles.number}>{lesson.id}</Text>
         </View>
         <View style={styles.text}>
-          <Text style={[styles.meta, { color: colors.textLocked }]}>Lesson {lesson.id} · locked</Text>
-          <Text style={[styles.title, { color: colors.textLocked }]}>{lesson.title}</Text>
+          <Text style={styles.meta}>
+            Lesson {lesson.id} · {lesson.partsTotal} parts + quiz
+          </Text>
+          <Text style={styles.title}>{lesson.title}</Text>
         </View>
-      </View>
+        <Text style={styles.start}>Start</Text>
+      </Pressable>
     );
   }
 
@@ -68,12 +72,13 @@ const styles = StyleSheet.create({
   },
   done: { backgroundColor: colors.mint },
   current: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.ink },
-  locked: { backgroundColor: colors.line },
+  todo: { backgroundColor: colors.surface },
   circle: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, minWidth: 0, gap: 4 },
   meta: { fontFamily: fonts.body, fontSize: 13, color: colors.textOnPastel },
   title: { fontFamily: fonts.bodySemibold, fontSize: 16, color: colors.ink },
   number: { fontFamily: fonts.mono, fontSize: 15, color: colors.ink },
   pct: { fontFamily: fonts.mono, fontSize: 14, color: colors.ink },
+  start: { fontFamily: fonts.bodySemibold, fontSize: 14, color: colors.ink },
   pressed: { opacity: 0.85 },
 });

@@ -30,14 +30,21 @@ export type LessonStep = {
   meshes: string[]; // the pieces of the 3D model this step is about (for highlighting later)
 };
 
-// A lesson and the student's progress in it. Lessons unlock in order.
+// A section of the course, e.g. Section 1 · Types of Cells. Teachers open sections.
+export type Section = {
+  id: number;
+  title: string;
+  description: string;
+};
+
+// A lesson and the student's progress in it. One lesson per cell in the section.
 export type Lesson = {
   id: number;
   title: string;
   modelId: number; // the CellModel this lesson explores
   partsDone: number;
   partsTotal: number;
-  status: 'done' | 'current' | 'locked';
+  status: 'done' | 'current' | 'todo'; // nothing is locked inside an open section
   steps?: LessonStep[]; // the lesson content (only some lessons have it so far)
 };
 

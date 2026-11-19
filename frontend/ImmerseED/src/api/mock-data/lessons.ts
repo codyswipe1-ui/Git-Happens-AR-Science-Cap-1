@@ -1,5 +1,5 @@
 // Sample lessons and progress until the back end has a /lessons endpoint.
-import { Lesson, LessonStep } from '@/api/types';
+import { Lesson, LessonStep, Section } from '@/api/types';
 
 // For now every lesson uses the Human cell and these 3 parts.
 // `meshes` are how the piece names start inside public/models/human.glb.
@@ -25,11 +25,21 @@ const HUMAN_CELL_STEPS: LessonStep[] = [
 ];
 
 const HUMAN_CELL_ID = 3;
+// Until each cell has its own model and steps, every lesson opens the Human cell lesson
+// (accurate for the Animal Cell lesson: a human cell is an animal cell).
 const shared = { modelId: HUMAN_CELL_ID, partsTotal: HUMAN_CELL_STEPS.length, steps: HUMAN_CELL_STEPS };
 
+export const CURRENT_SECTION: Section = {
+  id: 1,
+  title: 'Types of Cells',
+  description: 'Meet the 6 big kinds of cells that make up living things.',
+};
+
 export const LESSONS: Lesson[] = [
-  { id: 1, title: 'What is a cell?', ...shared, partsDone: 3, status: 'done' },
-  { id: 2, title: 'Inside a human cell', ...shared, partsDone: 1, status: 'current' },
-  { id: 3, title: 'Plant vs. animal cells', ...shared, partsDone: 0, status: 'locked' },
-  { id: 4, title: 'Animal cells up close', ...shared, partsDone: 0, status: 'locked' },
+  { id: 1, title: 'Animal Cell', ...shared, partsDone: 3, status: 'done' },
+  { id: 2, title: 'Plant Cell', ...shared, partsDone: 1, status: 'current' },
+  { id: 3, title: 'Bacterial Cell', ...shared, partsDone: 0, status: 'todo' },
+  { id: 4, title: 'Fungal Cell', ...shared, partsDone: 0, status: 'todo' },
+  { id: 5, title: 'Protist Cell', ...shared, partsDone: 0, status: 'todo' },
+  { id: 6, title: 'Archaeal Cell', ...shared, partsDone: 0, status: 'todo' },
 ];
