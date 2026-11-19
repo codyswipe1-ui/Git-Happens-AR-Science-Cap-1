@@ -15,6 +15,39 @@ export type CellModel = {
   locked?: boolean;
 };
 
+// One part of a cell model that students can tap and read about.
+export type CellPart = {
+  name: string;     // e.g. 'Nucleus'
+  summary: string;  // one or two short sentences
+  meshes: string[]; // how the piece names start inside the model's .glb file
+};
+
+// One step of a lesson: one cell part, explained.
+export type LessonStep = {
+  part: string;     // name shown on the model, e.g. 'Nucleus'
+  title: string;    // short, friendly heading, e.g. 'The control center'
+  body: string;     // the explanation
+  meshes: string[]; // the pieces of the 3D model this step is about (for highlighting later)
+};
+
+// A section of the course, e.g. Section 1 · Types of Cells. Teachers open sections.
+export type Section = {
+  id: number;
+  title: string;
+  description: string;
+};
+
+// A lesson and the student's progress in it. One lesson per cell in the section.
+export type Lesson = {
+  id: number;
+  title: string;
+  modelId: number; // the CellModel this lesson explores
+  partsDone: number;
+  partsTotal: number;
+  status: 'done' | 'current' | 'todo'; // nothing is locked inside an open section
+  steps?: LessonStep[]; // the lesson content (only some lessons have it so far)
+};
+
 // ---- Quizzes: shapes returned by backend/routes/quizzes.py ----
 
 export type QuizQuestion = {

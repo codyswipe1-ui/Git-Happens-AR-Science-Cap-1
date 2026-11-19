@@ -1,7 +1,9 @@
 // Every call the app makes to the back end lives in this file.
 // Screens import from here and never call fetch() themselves.
-import { CellModel, Quiz, QuizAnswers, QuizSubmission } from '@/api/types';
+import { CellModel, CellPart, Lesson, Quiz, Section, QuizAnswers, QuizSubmission } from '@/api/types';
 import { CELL_MODELS } from '@/api/mock-data/cell-models';
+import { CURRENT_SECTION, LESSONS } from '@/api/mock-data/lessons';
+import { CELL_PARTS } from '@/api/mock-data/cell-parts';
 
 // Set EXPO_PUBLIC_API_URL in .env.local.
 // On a phone, use your Mac's network address (e.g. http://10.3.250.7:8000), not localhost.
@@ -27,6 +29,26 @@ export async function getCellModels(): Promise<CellModel[]> {
 
 export async function getCellModel(id: number): Promise<CellModel | undefined> {
   return CELL_MODELS.find((m) => m.id === id); // TODO: return request<CellModel>(`/models/${id}`);
+}
+
+// The parts of a model students can tap. Empty if the model isn't split into named parts yet.
+export async function getCellParts(model: CellModel): Promise<CellPart[]> {
+  return CELL_PARTS[model.modelUrl ?? ''] ?? []; // TODO: return request<CellPart[]>(`/models/${model.id}/parts`);
+}
+
+// ---- Lessons: sample data until the back end has /lessons ----
+
+// The section the student is working in. TODO: return request<Section>('/sections/current');
+export async function getCurrentSection(): Promise<Section> {
+  return CURRENT_SECTION;
+}
+
+export async function getLessons(): Promise<Lesson[]> {
+  return LESSONS; // TODO: return request<Lesson[]>('/lessons');
+}
+
+export async function getLesson(id: number): Promise<Lesson | undefined> {
+  return LESSONS.find((l) => l.id === id); // TODO: return request<Lesson>(`/lessons/${id}`);
 }
 
 // ---- Quizzes: real back end (backend/routes/quizzes.py) ----

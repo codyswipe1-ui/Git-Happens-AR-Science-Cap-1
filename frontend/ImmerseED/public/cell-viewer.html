@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cell viewer</title>
+<style>
+  html, body { height: 100%; margin: 0; background: transparent; font-family: system-ui, sans-serif; color: #15151A; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #status { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; font-size: 15px; color: #3E3F4A; pointer-events: none; }
+  #ring { position: absolute; left: 0; top: 0; display: none; border: 3px solid #15151A; border-radius: 50%; box-sizing: border-box; box-shadow: 0 0 0 4px rgba(255,255,255,.75); pointer-events: none; }
+  #tag { position: absolute; left: 0; top: 0; display: none; background: #15151A; color: #FFFFFF; font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 999px; white-space: nowrap; pointer-events: none; }
+  #hint { position: absolute; left: 12px; bottom: 12px; background: rgba(255,255,255,.85); font-size: 13px; font-weight: 500; padding: 6px 10px; border-radius: 999px; pointer-events: none; }
+  #reset { position: absolute; right: 10px; bottom: 8px; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #FFFFFF; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="status" role="status">Loading the cell…</div>
+<div id="ring" aria-hidden="true"></div>
+<span id="tag" aria-hidden="true"></span>
+<span id="hint">Tap a part · drag to spin</span>
+<button id="reset" type="button" aria-label="Reset view">
+  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#15151A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+</button>
+<script type="module">
+// One 3D cell viewer for the whole app (Explore the model + Lessons).
+// The app says which part to highlight:  postMessage({ type: 'focus', meshes: ['Golgi'], label: 'Golgi apparatus' })
+// When the student taps the model, this page tells the app: { type: 'tap', meshes: [names of what was hit] }
+// Part names are matched by how they start, e.g. 'Golgi' matches 'Golgi_Golgi_0'.
+const $ = (id) => document.getElementById(id);
+const status = $('status'), ring = $('ring'), tag = $('tag');
+const params = new URLSearchParams(location.search);
+const modelName = params.get('model') || 'human';
+let focus = (params.get('focus') || '').split(',').filter(Boolean);
+let label = params.get('label') || '';
+if (params.get('hint') === '0') $('hint').style.display = 'none';
+
+try {
+  const THREE = await import('three');
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  document.body.prepend(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xe6e7ee, 2.5));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const sun = new THREE.DirectionalLight(0xffffff, 2);
+  sun.position.set(3, 5, 4);
+  scene.add(sun);
+
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 1000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.enablePan = false;
+
+  const size = () => [window.innerWidth, window.innerHeight];
+  function resize() {
+    const [w, h] = size();
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const gltf = await new GLTFLoader().loadAsync(`./models/${modelName}.glb`);
+  const root = gltf.scene;
+  scene.add(root);
+
+  // Center the model at (0, 0, 0) and measure it.
+  const box = new THREE.Box3().setFromObject(root);
+  root.position.sub(box.getCenter(new THREE.Vector3()));
+  root.updateMatrixWorld(true);
+  const radius = box.getSize(new THREE.Vector3()).length() / 2;
+
+  // Move the camera back just far enough to fit the whole cell, from slightly above.
+  const viewDir = new THREE.Vector3(0, 0.35, 1).normalize();
+  function frameCamera() {
+    const half = THREE.MathUtils.degToRad(camera.fov / 2);
+    const fitHeight = (radius * 0.9) / Math.tan(half);
+    const distance = Math.max(fitHeight, fitHeight / camera.aspect);
+    camera.position.copy(viewDir).multiplyScalar(distance);
+    camera.near = distance / 100;
+    camera.far = distance * 10;
+    camera.updateProjectionMatrix();
+    controls.target.set(0, 0, 0);
+    controls.minDistance = distance * 0.35;
+    controls.maxDistance = distance * 2.5;
+    controls.update();
+  }
+  frameCamera();
+  $('reset').onclick = frameCamera;
+
+  // Every piece gets its own material, so making one glow doesn't change the others.
+  const meshes = [];
+  root.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.material = obj.material.clone();
+    obj.userData.emissive = obj.material.emissive?.clone();
+    meshes.push(obj);
+  });
+
+  // Points spread over the highlighted part (in 3D). Each frame they're projected onto
+  // the screen to work out where to draw the circle.
+  let samples = [];
+  const glow = new THREE.Color(0xff9f6e);
+
+  function apply() {
+    samples = [];
+    for (const m of meshes) {
+      const on = focus.some((name) => m.name.startsWith(name));
+      if (m.material.emissive) {
+        m.material.emissive.copy(on ? glow : m.userData.emissive);
+        m.material.emissiveIntensity = on ? 0.35 : 1;
+      }
+      if (!on) continue;
+      const pos = m.geometry.attributes.position;
+      const step = Math.max(1, Math.floor(pos.count / 400));
+      for (let i = 0; i < pos.count; i += step) {
+        samples.push(new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld));
+      }
+    }
+    samples = nearestPiece(samples);
+    tag.textContent = label;
+    shown = false;
+  }
+
+  // Some parts are many separate copies (like mitochondria). Keep only the copy closest
+  // to the camera: start at the nearest point, then keep adding points that touch it.
+  function nearestPiece(points) {
+    if (!points.length) return points;
+    let start = 0;
+    points.forEach((q, i) => { if (q.distanceTo(camera.position) < points[start].distanceTo(camera.position)) start = i; });
+    const link = radius * 0.08; // "touching" = closer than this
+    const keep = new Set([start]);
+    const queue = [start];
+    while (queue.length) {
+      const a = points[queue.pop()];
+      points.forEach((q, i) => {
+        if (!keep.has(i) && a.distanceTo(q) < link) { keep.add(i); queue.push(i); }
+      });
+    }
+    return points.filter((_, i) => keep.has(i));
+  }
+
+  window.addEventListener('message', (e) => {
+    if (e.data?.type !== 'focus') return;
+    focus = e.data.meshes || [];
+    label = e.data.label || '';
+    apply();
+  });
+
+  // ---- The highlight circle ----
+  function bounds(pts) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  let shown = false, cx = 0, cy = 0, cs = 0;
+  const p = new THREE.Vector3();
+
+  function updateRing() {
+    const [w, h] = size();
+    const pts = [];
+    for (const s of samples) {
+      p.copy(s).project(camera); // -1..1 on screen
+      if (p.z < 1 && Math.abs(p.x) <= 1.1 && Math.abs(p.y) <= 1.1) pts.push([((p.x + 1) / 2) * w, ((1 - p.y) / 2) * h, p.z]);
+    }
+    if (!pts.length) { ring.style.display = tag.style.display = 'none'; shown = false; return; }
+
+    const small = Math.min(w, h);
+    const b = bounds(pts);
+    const tx = b.x + b.w / 2, ty = b.y + b.h / 2;
+    const ts = Math.min(Math.max(Math.max(b.w, b.h) + 24, 44), small * 0.9);
+
+    // Glide toward the new spot instead of jumping.
+    if (!shown) { cx = tx; cy = ty; cs = ts; shown = true; }
+    else { cx += (tx - cx) * 0.25; cy += (ty - cy) * 0.25; cs += (ts - cs) * 0.25; }
+
+    ring.style.display = 'block';
+    ring.style.width = ring.style.height = `${cs}px`;
+    ring.style.transform = `translate(${cx - cs / 2}px, ${cy - cs / 2}px)`;
+
+    if (!label) { tag.style.display = 'none'; return; }
+    tag.style.display = 'block';
+    const tw = tag.offsetWidth;
+    const lx = Math.min(Math.max(cx - tw / 2, 8), w - tw - 8);
+    let ly = cy - cs / 2 - 34;
+    if (ly < 8) ly = Math.min(cy + cs / 2 + 8, h - 34);
+    tag.style.transform = `translate(${lx}px, ${ly}px)`;
+  }
+
+  // ---- Tap a part (a click that isn't a drag) ----
+  const raycaster = new THREE.Raycaster();
+  let down = null;
+  renderer.domElement.addEventListener('pointerdown', (e) => { down = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointerup', (e) => {
+    if (!down) return;
+    const moved = Math.hypot(e.clientX - down[0], e.clientY - down[1]);
+    down = null;
+    if (moved > 6) return;
+    const [w, h] = size();
+    raycaster.setFromCamera(new THREE.Vector2((e.clientX / w) * 2 - 1, -(e.clientY / h) * 2 + 1), camera);
+    const names = [...new Set(raycaster.intersectObjects(meshes, false).map((hit) => hit.object.name))];
+    if (names.length) window.parent.postMessage({ type: 'tap', meshes: names }, '*');
+  });
+
+  apply();
+  status.style.display = 'none';
+
+  renderer.setAnimationLoop(() => {
+    controls.update();
+    renderer.render(scene, camera);
+    updateRing();
+  });
+} catch (err) {
+  console.error(err);
+  status.style.display = 'flex';
+  status.textContent = 'Couldn’t load the 3D cell. Check your internet connection and reload.';
+}
+</script>
+</body>
+</html>

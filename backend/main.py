@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from database import Base, engine
 from models.lesson import Lesson
@@ -23,6 +24,14 @@ app = FastAPI(
     description="Backend API for the ImmerseED AR Science application",
     version="0.1.0",
     lifespan=lifespan
+)
+
+# Let the web app (Expo on port 8081) call the API from the browser
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8081"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 # Connect the routes

@@ -1,23 +1,35 @@
-import { Link, Tabs } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { colors, fonts } from '@/constants/design';
 
 // One tab bar for phone AND web.
 // (The Expo template had two files because NativeTabs can't run in a browser.)
+// New design: white tab bar, ink for the active tab (see src/constants/design.ts).
 const COLORS = {
-  background: '#0b0a3d',
-  border: '#26236e',
-  active: '#579fbb',
-  inactive: '#749bdb',
+  background: colors.surface,
+  border: colors.line,
+  active: colors.ink,
+  inactive: colors.textMuted,
 };
 
 export default function AppTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.active,
         tabBarInactiveTintColor: COLORS.inactive,
-        tabBarStyle: { backgroundColor: COLORS.background, borderTopColor: COLORS.border },
+        tabBarStyle: {
+          backgroundColor: COLORS.background,
+          borderTopColor: COLORS.border,
+          // Room for icon + label, plus the iPhone home-indicator area
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
+        },
+        tabBarLabelStyle: { fontFamily: fonts.bodySemibold, fontSize: 12 },
       }}>
       <Tabs.Screen
         name="index"
@@ -38,28 +50,23 @@ export default function AppTabs() {
         }}
       />
       <Tabs.Screen name="model" options={{ href: null }} />
-      {/* Keep the library accessible from Models without a separate tab. */}
+      {/* Lessons open full screen, with no tab bar. */}
+      <Tabs.Screen name="lesson" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen
         name="library"
         options={{
-          href: null,
           title: 'Models',
-          headerShown: true,
-          headerStyle: { backgroundColor: COLORS.background },
-          headerTintColor: '#ffffff',
-          headerLeft: () => (
-            <Link href="/dashboard" style={{ color: COLORS.inactive, padding: 16 }}>
-              ← Dashboard
-            </Link>
+          tabBarIcon: ({ color, size }) => (
+            <SymbolView name={{ ios: 'square.stack.3d.up', android: 'deployed_code', web: 'deployed_code' }} tintColor={color} size={size} />
           ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="lessons"
         options={{
-          title: 'AR',
+          title: 'Lessons',
           tabBarIcon: ({ color, size }) => (
-            <SymbolView name={{ ios: 'cube', android: 'view_in_ar', web: 'view_in_ar' }} tintColor={color} size={size} />
+            <SymbolView name={{ ios: 'cube', android: 'view_in_ar', web: 'deployed_code' }} tintColor={color} size={size} />
           ),
         }}
       />
