@@ -1,22 +1,40 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-router = APIRouter(
-    prefix="/lessons",
-    tags=["Lessons"]
-)
+from database import get_db
+from models.lesson import Lesson
 
-# Decorator calling function when / is visited to display functions (temp for now)
+router = APIRouter(prefix="/lessons", tags=["Lessons"])
+
+
+# Get all published lessons
 @router.get("/")
-def get_lessons():
-    return [
-        {
-            "id": 1,
-            "title": "Solar System",
-            "subject": "Astronomy"
-        },
-        {
-            "id": 2,
-            "title": "Human Heart",
-            "subject": "Biology"
-        }
-    ]
+def get_lessons(db: Session = Depends(get_db)):
+    lessons = (
+        db.query(Lesson)
+        .filter(Lesson.is_published.is_(True))
+        .all()
+    )
+
+    return lessons
+
+
+# Get a specific published lesson
+@router.get("/{lesson_id}")
+def get_lesson(lesson_id: int, db: Session = Depends(get_db)):
+    lesson = (
+        db.query(Lesson)
+        .filter(
+            Lesson.id == lesson_id,
+            Lesson.is_published.is_(True)
+        )
+        .first()
+    )
+
+    if lesson is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Lesson not found"
+        )
+
+    return lesson
